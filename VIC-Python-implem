@@ -1,8 +1,28 @@
 import numpy as np
 import pandas as pd
-from sklearn import model_selection, metrics, multiclass, datasets, svm, linear_model, ensemble, svm
+from sklearn.model_selection import KFold
+from sklearn.metrics import SCORERS, roc_curve, auc
+from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
-
+classifiers = [
+    KNeighborsClassifier(3),
+    SVC(kernel='poly', gamma='scale', probability=True),
+    SVC(gamma=2, C=1),
+    GaussianProcessClassifier(1.0 * RBF(1.0)),
+    DecisionTreeClassifier(max_depth=5),
+    RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+    MLPClassifier(alpha=1, max_iter=1000),
+    AdaBoostClassifier(),
+    GaussianNB(),
+    QuadraticDiscriminantAnalysis()]
 
 df =  pd.read_csv('/Users/jesusllanogarcia/Desktop/Projecto/Clusters/CSV/Cluster-76.csv')
 df = df.replace([np.inf, -np.inf], np.nan)
@@ -18,12 +38,12 @@ print(X.iloc(1))
 
 print(X)
 print(y)
-print(sorted(metrics.SCORERS.keys()))
+print(sorted(SCORERS.keys()))
 
 print(df.dtypes)
 
-kf = model_selection.KFold(n_splits=5, shuffle=True, random_state = 2)
-clf = svm.SVC(kernel='poly', gamma='scale', probability=True)
+kf = KFold(n_splits=5, shuffle=True, random_state = 2)
+clf = classifiers[1]
 
 for train_index, test_index in kf.split(X):
     print("TRAIN:", train_index, "TEST:", test_index)
@@ -35,9 +55,9 @@ for train_index, test_index in kf.split(X):
     print('y_train: ', y_train, 'y_test: ', y_test)
     print('Type: ', type(y_train))
     clf.fit(X_train, y_train)
-    y_score = clf.fit(X_train, y_train).decision_function(X_test)
-    print('pred_class: ', y_score)
-    fpr, tpr, _ = metrics.roc_curve(y_test, y_score)
-    roc_auc = metrics.auc(fpr, tpr)
+    y_score = clf.fit(X_train, y_train).predict(X_test)
+    print('Decision_funct: ', y_score)
+    fpr, tpr, _ = roc_curve(y_test, y_score)
+    roc_auc = auc(fpr, tpr)
     # tpr = tp/(tp+fn)
     print("Area under the ROC curve : ", roc_auc)
