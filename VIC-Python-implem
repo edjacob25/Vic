@@ -1,0 +1,44 @@
+import numpy as np
+import pandas as pd
+from sklearn import model_selection, metrics, datasets, svm, linear_model, ensemble, svm
+from sklearn.preprocessing import label_binarize
+
+df =  pd.read_csv('/Users/jesusllanogarcia/Desktop/Projecto/Clusters/CSV/Cluster-76.csv')
+df = df.replace([np.inf, -np.inf], np.nan)
+df = df.replace('class_0', 0)
+df = df.replace('class_1', 1)
+df = df.fillna(0)
+print(df.head())
+
+y = df['Class']
+X = df.drop(columns='Class')
+
+print(y)
+
+print(X)
+
+print(X)
+print(y)
+print(sorted(metrics.SCORERS.keys()))
+
+kf = model_selection.KFold(n_splits=5, shuffle=True, random_state=2)
+
+
+for train_index, test_index in kf.split(X):
+    clf = svm.SVC(gamma='auto')
+    print("TRAIN:", train_index, "TEST:", test_index)
+    X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+    print('X_train: ', X_train, 'X_test: ', X_test)
+    y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+    print('y_train: ', y_train, 'y_test: ', y_test)
+    print('Type: ', type(y_train))
+    clf.fit(X_train, y_train)
+    pred = clf.predict(X_test)
+    print('pred_class: ', pred)
+    print('y_test: ', y_test.transpose())
+    fpr, tpr, thresholds = metrics.roc_curve(y_true=y_test.transpose(), y_score=pred)
+    print('fpr: ', fpr, 'tpr: ', tpr, 'thresholds: ', thresholds)
+    accuracy = metrics.accuracy_score(y_test, pred)
+    print("Accuracy : %f" % accuracy)
+    roc_auc = metrics.auc(fpr, tpr)
+    print("Area under the ROC curve : %f" % roc_auc)
