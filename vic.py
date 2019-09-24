@@ -79,7 +79,7 @@ def get_best_classifier(df: pd.DataFrame, classifiers: List) -> Tuple[Any, float
 
     pool = multiprocessing.Pool(procs)
     results = pool.starmap(calculate_auc, [(df, classifier, kf, original_class) for classifier in classifiers])
-    results.sort(key=lambda x: x[1])
+    results.sort(key=lambda x: x[1], reverse=True)
     return results[0]
 
 
@@ -106,7 +106,7 @@ def main():
     for classifier, auc, file in results:
         print(f"File {file.name} best classifier is {type(classifier).__name__} with auc {auc}")
 
-    results.sort(key=lambda x: x[1])
+    results.sort(key=lambda x: x[1], reverse=True)
 
     print(f"{fg.blue}The best 5 splits are:{fg.rs}")
     for _, auc, file in results[:5]:
