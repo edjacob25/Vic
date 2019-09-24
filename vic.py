@@ -1,3 +1,5 @@
+import math
+import multiprocessing
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Any
@@ -44,31 +46,41 @@ def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def calculate_auc(df: pd.DataFrame, classifier, k_fold: KFold, original_class: pd.DataFrame) -> Tuple[Any, float]:
+    aucs = []
+    for train_index, test_index in k_fold.split(df):
+        training_set, test_set = df.iloc[train_index], df.iloc[test_index]
+        training_class, test_class = original_class.iloc[train_index], original_class.iloc[test_index]
+        if hasattr(classifier, "predict_proba"):
+            predicted = classifier.fit(training_set, training_class).predict_proba(test_set)[:, 1]
+        else:
+            prob_pos = classifier.fit(training_set, training_class).decision_function(test_set)
+            predicted = \
+                (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
+        fpr, tpr, _ = metrics.roc_curve(test_class, predicted)
+        auc = metrics.auc(fpr, tpr)
+        aucs.append(auc)
+    return classifier, sum(aucs) / k_fold.n_splits
+
+
 def get_best_classifier(df: pd.DataFrame, classifiers: List) -> Tuple[Any, float]:
     seed = get_config("INIT", "seed")
-    if seed.isspace():
+    if seed.isspace() or not seed.isnumeric():
         seed = 1
+
+    procs = get_config("INIT", "procs")
+    if procs.isspace() or not procs.isnumeric():
+        procs = math.floor(multiprocessing.cpu_count() / 2)
+    else:
+        procs = int(procs)
     kf = KFold(n_splits=10, shuffle=True, random_state=int(seed))
-    best_auc = 0.0
-    best_classifier = None
     original_class = df['class']
     df = df.drop(columns='class')
-    for classifier in classifiers:
-        for train_index, test_index in kf.split(df):
-            training_set, test_set = df.iloc[train_index], df.iloc[test_index]
-            training_class, test_class = original_class.iloc[train_index], original_class.iloc[test_index]
-            if hasattr(classifier, "predict_proba"):
-                predicted = classifier.fit(training_set, training_class).predict_proba(test_set)[:, 1]
-            else:
-                prob_pos = classifier.fit(training_set, training_class).decision_function(test_set)
-                predicted = \
-                    (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
-            fpr, tpr, _ = metrics.roc_curve(test_class, predicted)
-            auc = metrics.auc(fpr, tpr)
-            if auc > best_auc:
-                best_auc = auc
-                best_classifier = classifier
-    return best_classifier, best_auc
+
+    pool = multiprocessing.Pool(procs)
+    results = pool.starmap(calculate_auc, [(df, classifier, kf, original_class) for classifier in classifiers])
+    results.sort(key=lambda x: x[1])
+    return results[0]
 
 
 def obtain_best_classifier_in_folder(directory: Path) -> List[Tuple[Any, float, Path]]:
