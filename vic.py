@@ -1,20 +1,23 @@
+from pathlib import Path
+from typing import List, Tuple, Any
+
 import numpy as np
 import pandas as pd
-from typing import List
-from sklearn.model_selection import KFold
-from sklearn.metrics import SCORERS, roc_curve, auc
-#from sklearn.neural_network import MLPClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
+from sklearn import metrics
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.model_selection import KFold
 from sklearn.naive_bayes import GaussianNB
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+
+from common import get_config
 
 
-def create_classifiers():
+def create_classifiers() -> List:
     return [
         KNeighborsClassifier(3),
         SVC(kernel='poly', gamma='scale', probability=True),
@@ -23,11 +26,14 @@ def create_classifiers():
         RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1, min_samples_leaf=5),
         RandomForestClassifier(max_depth=10, n_estimators=10, max_features=1),
         GaussianNB(),
-        DecisionTreeClassifier(max_depth = 5, min_samples_split= 5), MLPClassifier(alpha=1, max_iter=5000)]
-        
+        DecisionTreeClassifier(max_depth=5, min_samples_split=5), MLPClassifier(alpha=1, max_iter=5000)]
 
-def load_file(path: str):
-    df = pd.read_csv(path)
+
+def load_file(path: Path) -> pd.DataFrame:
+    return pd.read_csv(path)
+
+
+def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
     df = df.replace([np.inf, -np.inf], np.nan)
     df = df.replace('class_0', 0)
     df = df.replace('class_1', 1)
@@ -35,37 +41,46 @@ def load_file(path: str):
     return df
 
 
-def train_clasifiers(df: pd.DataFrame, classifiers, AUC: float = 0.0):
-    kf = KFold(n_splits=5, shuffle=True, random_state=2)
-    model = set()
-    y = df['Class']
-    X = df.drop(columns='Class')
+def get_best_classifier(df: pd.DataFrame, classifiers: List) -> Tuple[Any, float]:
+    seed = get_config("INIT", "seed")
+    if seed.isspace():
+        seed = 1
+    kf = KFold(n_splits=5, shuffle=True, random_state=int(seed))
+    best_auc = 0.0
+    best_classifier = None
+    original_class = df['class']
+    df = df.drop(columns='class')
     for classifier in classifiers:
-        for train_index, test_index in kf.split(X):
-            print("TRAIN:", train_index, "TEST:", test_index)
-            X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-            print('X_train: ', X_train, 'X_test: ', X_test)
-            y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-            print('y_train: ', y_train, 'y_test: ', y_test)
-            y_score = classifier.fit(X_train, y_train).predict(X_test)
-            print('class: ', y_score)
-            print('Real class: ', y_test)
-            fpr, tpr, _ = roc_curve(y_test, y_score)
-            roc_auc = auc(fpr, tpr)
-            if roc_auc >= AUC:
-                AUC = roc_auc
-                model.add(classifier)
-            # tpr = tp/(tp+fn)
-            print("Area under the ROC curve : ", roc_auc)
-    return model, AUC
+        for train_index, test_index in kf.split(df):
+            training_set, test_set = df.iloc[train_index], df.iloc[test_index]
+            training_class, test_class = original_class.iloc[train_index], original_class.iloc[test_index]
+            predicted = classifier.fit(training_set, training_class).predict(test_set)
+            fpr, tpr, _ = metrics.roc_curve(test_class, predicted)
+            auc = metrics.auc(fpr, tpr)
+            if auc > best_auc:
+                best_auc = auc
+                best_classifier = classifier
+    return best_classifier, best_auc
+
+
+def obtain_best_classifier_in_folder(directory: Path) -> List[Tuple[Any, float, Path]]:
+    files = [x for x in directory.iterdir() if x.suffix == ".csv"]
+    classifiers = create_classifiers()
+    result = []
+    for file in files:
+        df = load_file(file)
+        df = clean_dataset(df)
+        classifier, auc = get_best_classifier(df, classifiers)
+        result.append((classifier, auc, file))
+    return result
+
 
 def main():
-    classifiers = create_classifiers()
-    df = load_file('/Users/jesusllanogarcia/Desktop/Projecto/Clusters/CSV/Cluster-76.csv')
-    model, auc = train_clasifiers(df, classifiers)
-    for classifier in model:
-        print('Classifier: ', classifier)
+    directory = Path("Data/Partitions").resolve()
+    results = obtain_best_classifier_in_folder(directory)
+    for classifier, auc, file in results:
+        print(f"File {file.name} best classifier is {type(classifier).__name__} with auc {auc}")
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     main()
