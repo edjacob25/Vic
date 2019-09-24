@@ -3,31 +3,12 @@ import multiprocessing
 import os
 import subprocess
 import time
-from configparser import ConfigParser
-from datetime import datetime
 from pathlib import Path
 from typing import Tuple
 
-from dateutil.relativedelta import relativedelta
 from sty import fg
 
-config = None
-
-
-def time_human_readable(start: float, end: float) -> str:
-    attrs = ['years', 'months', 'days', 'hours', 'minutes', 'seconds']
-    delta = relativedelta(datetime.fromtimestamp(end), datetime.fromtimestamp(start))
-    spaces = ['%d %s' % (getattr(delta, attr), getattr(delta, attr) > 1 and attr or attr[:-1]) for attr in attrs if
-              getattr(delta, attr)]
-    return ", ".join(spaces)
-
-
-def get_config(section: str, config_name: str) -> str:
-    global config
-    if config is None:
-        config = ConfigParser()
-        config.read("config.ini")
-    return config[section][config_name]
+from common import get_config, time_human_readable
 
 
 def run_on_file(dataset_path: Path, time_limit: int, java_mem: int = 8192, mem_limit: int = None, procs: int = None,
