@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Any
 
@@ -13,8 +14,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
+from sty import fg
 
-from common import get_config
+from common import get_config, format_time_difference
 
 
 def create_classifiers() -> List:
@@ -68,18 +70,29 @@ def obtain_best_classifier_in_folder(directory: Path) -> List[Tuple[Any, float, 
     classifiers = create_classifiers()
     result = []
     for file in files:
+        print(f"Starting file {fg.blue}{file}{fg.rs}")
         df = load_file(file)
         df = clean_dataset(df)
         classifier, auc = get_best_classifier(df, classifiers)
         result.append((classifier, auc, file))
+        print(f"Finished file {fg.blue}{file}{fg.rs}")
     return result
 
 
 def main():
     directory = Path("Data/Partitions").resolve()
+    start = datetime.now()
     results = obtain_best_classifier_in_folder(directory)
+    end = datetime.now()
+    print(f"Analysis of all files took {format_time_difference(start.timestamp(), end.timestamp())}")
     for classifier, auc, file in results:
         print(f"File {file.name} best classifier is {type(classifier).__name__} with auc {auc}")
+
+    results.sort(key=lambda x: x[1])
+
+    print(f"{fg.blue}The best 5 splits are:{fg.rs}")
+    for _, auc, file in results[:5]:
+        print(f"- {fg.green}{file}{fg.rs} with auc {fg.green}{auc}{fg.rs}")
 
 
 if __name__ == "__main__":
