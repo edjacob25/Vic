@@ -1,18 +1,20 @@
-from scipy.io import arff
+import re
+from pathlib import Path
+from typing import List
+
 import numpy as np
 import pandas as pd
-import re
+from scipy.io import arff
 
 
-def create_r(seed=30):
-    lists = []
-
+def create_index_partitions() -> List[int]:
+    partitions = []
     for i in range(10, 200, 10):
-        print(i)
+        partitions.append(i)
 
-    for i in range(100-25, 100+26):
-        lists.append(i)
-    return lists
+    for i in range(75, 126):
+        partitions.append(i)
+    return partitions
 
 
 def write_arff_file(dataset: pd.DataFrame, filename="dataset.arff", name="Universities"):
@@ -39,23 +41,28 @@ def write_arff_file(dataset: pd.DataFrame, filename="dataset.arff", name="Univer
             file.write(f"{', '.join(items)}\n")
 
 
-def main():
-    data = arff.loadarff('dataset.NoString.MediumSize.arff')
-    df = pd.DataFrame(data[0])
-    df = df.drop(columns=[''])
+def create_partitions(dataset_path: Path):
+    data, a = arff.loadarff(dataset_path)
+    df = pd.DataFrame(data)
+    partitions = create_index_partitions()
+    base_path = Path("Data/Partitions")
+    base_path = base_path.resolve()
+    if not base_path.exists():
+        base_path.mkdir()
 
-    lists = create_r(30)
-
-    print(lists)
-
-    for r in lists:
-        df1 = df.drop(columns=['rank_1'])
+    for r in partitions:
+        df = df.drop(columns=['rank_1'])
         class_series = pd.Series(['class_0' if i <= r else 'class_1' for i in range(200)])
-        df1['Class'] = class_series
-        df1.to_csv('/Users/jesusllanogarcia/Desktop/Projecto/Clusters/Cluster-{}.csv'.format(r))
-        write_arff_file(df1, filename='/Users/jesusllanogarcia/Desktop/Projecto/Clusters/Cluster-{}.arff'.format(r))
+        df['class'] = class_series
+        path = base_path / f"partition_{r}"
+        df.to_csv(path.with_suffix(".csv"))
+        write_arff_file(df, filename=path.with_suffix(".arff"))
+
+
+def main():
+    dataset_path = Path("Data/initial_dataset.arff")
+    create_partitions(dataset_path)
 
 
 if __name__ == '__main__':
     main()
-    # fix_csv_names()
