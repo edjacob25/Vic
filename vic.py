@@ -91,9 +91,11 @@ def obtain_best_classifier_in_folder(directory: Path) -> List[Tuple[Any, float, 
         print(f"Starting file {fg.blue}{file}{fg.rs}")
         df = load_file(file)
         df = clean_dataset(df)
+        start = datetime.now()
         classifier, auc = get_best_classifier(df, classifiers)
+        end = datetime.now()
         result.append((classifier, auc, file))
-        print(f"Finished file {fg.blue}{file}{fg.rs}")
+        print(f"Finished file {fg.blue}{file}{fg.rs}, took {format_time_difference(start.timestamp(), end.timestamp())}")
     return result
 
 
