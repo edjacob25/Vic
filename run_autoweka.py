@@ -8,7 +8,7 @@ from typing import Tuple
 
 from sty import fg
 
-from common import get_config, time_human_readable
+from common import get_config, format_time_difference
 
 
 def run_on_file(dataset_path: Path, time_limit: int, java_mem: int = 8192, mem_limit: int = None, procs: int = None,
@@ -53,7 +53,7 @@ def run_on_file(dataset_path: Path, time_limit: int, java_mem: int = 8192, mem_l
     print(result.args)
     print(result.returncode)
     end = time.time()
-    print(f"Took {fg.green}{time_human_readable(start, end)}{fg.rs} to run")
+    print(f"Took {fg.green}{format_time_difference(start, end)}{fg.rs} to run")
     return result.stdout.decode("utf-8"), result.stderr.decode("utf-8")
 
 

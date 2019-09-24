@@ -9,7 +9,7 @@ from dateutil.relativedelta import relativedelta
 config = None
 
 
-def time_human_readable(start: float, end: float) -> str:
+def format_time_difference(start: float, end: float) -> str:
     attrs = ['years', 'months', 'days', 'hours', 'minutes', 'seconds']
     delta = relativedelta(datetime.fromtimestamp(end), datetime.fromtimestamp(start))
     spaces = ['%d %s' % (getattr(delta, attr), getattr(delta, attr) > 1 and attr or attr[:-1]) for attr in attrs if
