@@ -5,30 +5,31 @@ from typing import List, Tuple, Any
 import numpy as np
 import pandas as pd
 from sklearn import metrics
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
+from sklearn.gaussian_process.kernels import Matern, DotProduct, WhiteKernel
 from sklearn.model_selection import KFold
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
 from sty import fg
 
 from common import get_config, format_time_difference
 
 
 def create_classifiers() -> List:
+    kernel = DotProduct() + WhiteKernel()
     return [
         KNeighborsClassifier(3),
         SVC(kernel='poly', gamma='scale', probability=True),
-        SVC(gamma=2, C=1),
-        GaussianProcessClassifier(1.0 * RBF(1.0)),
+        SVC(gamma=2, C=1, probability=True),
+        GaussianProcessClassifier(kernel=Matern(nu=2.5)),
+        GaussianProcessClassifier(kernel=kernel),
         RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1, min_samples_leaf=5),
-        RandomForestClassifier(max_depth=10, n_estimators=10, max_features=1),
+        RandomForestClassifier(max_depth=10, n_estimators=10, max_features=1, ),
         GaussianNB(),
-        DecisionTreeClassifier(max_depth=5, min_samples_split=5), MLPClassifier(alpha=1, max_iter=5000)]
+        QuadraticDiscriminantAnalysis()]
 
 
 def load_file(path: Path) -> pd.DataFrame:
@@ -47,7 +48,7 @@ def get_best_classifier(df: pd.DataFrame, classifiers: List) -> Tuple[Any, float
     seed = get_config("INIT", "seed")
     if seed.isspace():
         seed = 1
-    kf = KFold(n_splits=5, shuffle=True, random_state=int(seed))
+    kf = KFold(n_splits=10, shuffle=True, random_state=int(seed))
     best_auc = 0.0
     best_classifier = None
     original_class = df['class']
@@ -56,7 +57,12 @@ def get_best_classifier(df: pd.DataFrame, classifiers: List) -> Tuple[Any, float
         for train_index, test_index in kf.split(df):
             training_set, test_set = df.iloc[train_index], df.iloc[test_index]
             training_class, test_class = original_class.iloc[train_index], original_class.iloc[test_index]
-            predicted = classifier.fit(training_set, training_class).predict(test_set)
+            if hasattr(classifier, "predict_proba"):
+                predicted = classifier.fit(training_set, training_class).predict_proba(test_set)[:, 1]
+            else:
+                prob_pos = classifier.fit(training_set, training_class).decision_function(test_set)
+                predicted = \
+                    (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
             fpr, tpr, _ = metrics.roc_curve(test_class, predicted)
             auc = metrics.auc(fpr, tpr)
             if auc > best_auc:
