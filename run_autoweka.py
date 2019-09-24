@@ -67,8 +67,10 @@ def main():
         initial_dir.mkdir()
         results_dir.mkdir()
 
-    for data_file in initial_dir.iterdir():
-        weka_result, weka_error = run_on_file(data_file, time_limit=5, folds=5)
+    files = [x for x in initial_dir.iterdir() if x.is_file()]
+    for data_file in files:
+        weka_result, weka_error = run_on_file(data_file, time_limit=5, folds=5, seed=get_config("INIT", "seed"),
+                                              metric="areaUnderROC")
         res_file = results_dir / data_file.with_suffix(".txt").name
         err_file = results_dir / data_file.with_suffix(".txt").name.replace(".t", "_error.t")
         with res_file.open("w") as file:
