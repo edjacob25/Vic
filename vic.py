@@ -11,7 +11,7 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import Matern, DotProduct, WhiteKernel
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, StratifiedKFold
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
@@ -48,7 +48,7 @@ def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
 
 def calculate_auc(df: pd.DataFrame, classifier, k_fold: KFold, original_class: pd.DataFrame) -> Tuple[Any, float]:
     aucs = []
-    for train_index, test_index in k_fold.split(df):
+    for train_index, test_index in k_fold.split(df, original_class):
         training_set, test_set = df.iloc[train_index], df.iloc[test_index]
         training_class, test_class = original_class.iloc[train_index], original_class.iloc[test_index]
         if hasattr(classifier, "predict_proba"):
@@ -73,7 +73,7 @@ def get_best_classifier(df: pd.DataFrame, classifiers: List) -> Tuple[Any, float
         procs = math.floor(multiprocessing.cpu_count() / 2)
     else:
         procs = int(procs)
-    kf = KFold(n_splits=10, shuffle=True, random_state=int(seed))
+    kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=seed)
     original_class = df['class']
     df = df.drop(columns='class')
 
@@ -88,7 +88,6 @@ def obtain_best_classifier_in_folder(directory: Path) -> List[Tuple[Any, float, 
     classifiers = create_classifiers()
     result = []
     for file in files:
-        print(f"Starting file {fg.blue}{file}{fg.rs}")
         df = load_file(file)
         df = clean_dataset(df)
         start = datetime.now()
@@ -107,6 +106,11 @@ def main():
     print(f"Analysis of all files took {format_time_difference(start.timestamp(), end.timestamp())}")
     for classifier, auc, file in results:
         print(f"File {file.name} best classifier is {type(classifier).__name__} with auc {auc}")
+
+    rs = len(results)
+    results = [x for x in results if not math.isnan(x[1])]
+    print(f"Removed {rs - len(results)} that have nan")
+
 
     results.sort(key=lambda x: x[1], reverse=True)
 
