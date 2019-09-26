@@ -21,6 +21,7 @@ def create_index_partitions() -> List[int]:
 def create_partitions(dataset_path: Path):
     data, a = arff.loadarff(dataset_path)
     df = pd.DataFrame(data)
+    df = df.drop(columns=['rank_1'])
     partitions = create_index_partitions()
     base_path = Path("Data/Partitions")
     base_path = base_path.resolve()
@@ -28,8 +29,7 @@ def create_partitions(dataset_path: Path):
         base_path.mkdir()
 
     for r in partitions:
-        df = df.drop(columns=['rank_1'])
-        class_series = pd.Series(['class_0' if i <= r else 'class_1' for i in range(200)])
+        class_series = pd.Series(['class_0' if i < r else 'class_1' for i in range(200)])
         df['class'] = class_series
         path = base_path / f"partition_{r}"
         df.to_csv(path.with_suffix(".csv"))
