@@ -7,49 +7,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Any
 
-import numpy as np
 import pandas as pd
 from sklearn import metrics
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis, LinearDiscriminantAnalysis
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import Matern, DotProduct, WhiteKernel
 from sklearn.model_selection import KFold, StratifiedKFold
-from sklearn.naive_bayes import GaussianNB
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
 from sty import fg
-
-from common import get_config, format_time_difference
+from common import get_config, format_time_difference, load_file, clean_dataset, create_classifiers
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
-
-
-def create_classifiers() -> List:
-    kernel = DotProduct() + WhiteKernel()
-    return [KNeighborsClassifier(3),
-            SVC(kernel='poly', gamma='scale', probability=True),
-            SVC(gamma=2, C=1, probability=True),
-            GaussianProcessClassifier(kernel=Matern(nu=2.5)),
-            GaussianProcessClassifier(kernel=kernel),
-            RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1, min_samples_leaf=5),
-            RandomForestClassifier(max_depth=10, n_estimators=10, max_features=1, ),
-            GaussianNB(),
-            LinearDiscriminantAnalysis(solver='eigen', shrinkage='auto', tol=0.0001),
-            QuadraticDiscriminantAnalysis()]
-
-
-def load_file(path: Path) -> pd.DataFrame:
-    return pd.read_csv(str(path))
-
-
-def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.replace([np.inf, -np.inf], np.nan)
-    df = df.replace('class_0', 0)
-    df = df.replace('class_1', 1)
-    df = df.fillna(0)
-    return df
 
 
 def calculate_auc(df: pd.DataFrame, classifier, k_fold: KFold, original_class: pd.DataFrame) -> Tuple[Any, float]:
