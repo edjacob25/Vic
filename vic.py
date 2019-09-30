@@ -1,5 +1,7 @@
 import math
 import multiprocessing
+import random
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Any
@@ -18,6 +20,9 @@ from sklearn.svm import SVC
 from sty import fg
 
 from common import get_config, format_time_difference
+
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 
 def create_classifiers() -> List:
