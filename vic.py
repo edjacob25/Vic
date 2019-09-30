@@ -63,27 +63,24 @@ def calculate_auc(df: pd.DataFrame, classifier, k_fold: KFold, original_class: p
     return classifier, sum(aucs) / k_fold.n_splits
 
 
-def get_best_classifier(df: pd.DataFrame, classifiers: List) -> Tuple[Any, float]:
-    seed = get_config("INIT", "seed")
-    if seed.isspace() or not seed.isnumeric():
-        seed = 1
+def get_best_classifier(df: pd.DataFrame, classifiers: List, seed: int, pool: multiprocessing.Pool) -> Tuple[Any, float]:
+    kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=seed)
+    original_class = df['class']
+    df = df.drop(columns='class')
+    results = pool.starmap(calculate_auc, [(df, classifier, kf, original_class) for classifier in classifiers])
+    results.sort(key=lambda x: x[1], reverse=True)
 
+    return results[0]
+
+
+def obtain_best_classifier_in_folder(directory: Path, seed: int) -> List[Tuple[Any, float, Path]]:
     procs = get_config("INIT", "procs")
     if procs.isspace() or not procs.isnumeric():
         procs = math.floor(multiprocessing.cpu_count() / 2)
     else:
         procs = int(procs)
-    kf = StratifiedKFold(n_splits=10, shuffle=True, random_state=seed)
-    original_class = df['class']
-    df = df.drop(columns='class')
 
     pool = multiprocessing.Pool(procs)
-    results = pool.starmap(calculate_auc, [(df, classifier, kf, original_class) for classifier in classifiers])
-    results.sort(key=lambda x: x[1], reverse=True)
-    return results[0]
-
-
-def obtain_best_classifier_in_folder(directory: Path) -> List[Tuple[Any, float, Path]]:
     files = [x for x in directory.iterdir() if x.suffix == ".csv"]
     classifiers = create_classifiers()
     result = []
@@ -91,17 +88,24 @@ def obtain_best_classifier_in_folder(directory: Path) -> List[Tuple[Any, float, 
         df = load_file(file)
         df = clean_dataset(df)
         start = datetime.now()
-        classifier, auc = get_best_classifier(df, classifiers)
+        classifier, auc = get_best_classifier(df, classifiers, seed, pool)
         end = datetime.now()
         result.append((classifier, auc, file))
-        print(f"Finished file {fg.blue}{file}{fg.rs}, took {format_time_difference(start.timestamp(), end.timestamp())}")
+        print(
+            f"Finished file {fg.blue}{file}{fg.rs}, took {format_time_difference(start.timestamp(), end.timestamp())}")
+    pool.close()
     return result
 
 
 def main():
     directory = Path("Data/Partitions").resolve()
+    seed = get_config("INIT", "seed")
+    if seed.isspace() or not seed.isnumeric():
+        seed = 1
+    else:
+        seed = int(seed)
     start = datetime.now()
-    results = obtain_best_classifier_in_folder(directory)
+    results = obtain_best_classifier_in_folder(directory, seed)
     end = datetime.now()
     print(f"Analysis of all files took {format_time_difference(start.timestamp(), end.timestamp())}")
     for classifier, auc, file in results:
