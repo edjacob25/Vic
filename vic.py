@@ -35,7 +35,7 @@ def create_classifiers() -> List:
 
 
 def load_file(path: Path) -> pd.DataFrame:
-    return pd.read_csv(path)
+    return pd.read_csv(str(path))
 
 
 def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
