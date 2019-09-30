@@ -2,6 +2,7 @@ config.ini
 .idea/
 Data/Results
 Data/Partitions
+Data/*.csv
 .vscode/
 
 # Created by https://www.gitignore.io/api/python
