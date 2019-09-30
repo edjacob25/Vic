@@ -2,6 +2,7 @@ import math
 import multiprocessing
 import random
 import warnings
+from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Any
@@ -119,12 +120,21 @@ def multiple_analysis(num_of_seeds):
 
 
 def main():
-    directory = Path("Data/Partitions").resolve()
-    seed = get_config("INIT", "seed")
-    if seed.isspace() or not seed.isnumeric():
-        seed = 1
+    args = ArgumentParser()
+    args.add_argument("-d", "--directory", required=True, help="File to be analyzed")
+    args.add_argument("-s", "--seed", required=False, help="Seed which wants to be used, must be numeric", type=int)
+    args.parse_args()
+
+    directory = Path(args.directory).resolve()
+    if not args.seed:
+        seed = get_config("INIT", "seed")
+        if seed.isspace() or not seed.isnumeric():
+            seed = 1
+        else:
+            seed = int(seed)
     else:
-        seed = int(seed)
+        seed = args.seed
+
     start = datetime.now()
     results = obtain_best_classifier_in_folder(directory, seed)
     end = datetime.now()
