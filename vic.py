@@ -113,7 +113,7 @@ def multiple_analysis(num_of_seeds):
         series = pd.Series(name=f"{seed}", data=data, index=idx)
         total_results = total_results.append(series)
     print(total_results)
-    total_results.to_csv("vic_results.csv")
+    total_results.to_csv("Data/vic_results.csv")
     print(total_results.mean())
     print(total_results.mean().sort_values())
 
