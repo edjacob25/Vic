@@ -7,7 +7,7 @@ from typing import List, Tuple, Any
 import numpy as np
 import pandas as pd
 from sklearn import metrics
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis, LinearDiscriminantAnalysis
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import Matern, DotProduct, WhiteKernel
@@ -22,16 +22,16 @@ from common import get_config, format_time_difference
 
 def create_classifiers() -> List:
     kernel = DotProduct() + WhiteKernel()
-    return [
-        KNeighborsClassifier(3),
-        SVC(kernel='poly', gamma='scale', probability=True),
-        SVC(gamma=2, C=1, probability=True),
-        GaussianProcessClassifier(kernel=Matern(nu=2.5)),
-        GaussianProcessClassifier(kernel=kernel),
-        RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1, min_samples_leaf=5),
-        RandomForestClassifier(max_depth=10, n_estimators=10, max_features=1, ),
-        GaussianNB(),
-        QuadraticDiscriminantAnalysis()]
+    return [KNeighborsClassifier(3),
+            SVC(kernel='poly', gamma='scale', probability=True),
+            SVC(gamma=2, C=1, probability=True),
+            GaussianProcessClassifier(kernel=Matern(nu=2.5)),
+            GaussianProcessClassifier(kernel=kernel),
+            RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1, min_samples_leaf=5),
+            RandomForestClassifier(max_depth=10, n_estimators=10, max_features=1, ),
+            GaussianNB(),
+            LinearDiscriminantAnalysis(solver='eigen', shrinkage='auto', tol=0.0001),
+            QuadraticDiscriminantAnalysis()]
 
 
 def load_file(path: Path) -> pd.DataFrame:
