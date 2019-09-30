@@ -97,6 +97,22 @@ def obtain_best_classifier_in_folder(directory: Path, seed: int) -> List[Tuple[A
     return result
 
 
+def multiple_analysis(num_of_seeds):
+    directory = Path("Data/Partitions").resolve()
+    seeds = [random.randint(1, 10000000) for _ in range(num_of_seeds)]
+    total_results = pd.DataFrame()
+    for seed in seeds:
+        results = obtain_best_classifier_in_folder(directory, seed)
+        idx = [x[2].stem for x in results]
+        data = [x[1] for x in results]
+        series = pd.Series(name=f"{seed}", data=data, index=idx)
+        total_results = total_results.append(series)
+    print(total_results)
+    total_results.to_csv("vic_results.csv")
+    print(total_results.mean())
+    print(total_results.mean().sort_values())
+
+
 def main():
     directory = Path("Data/Partitions").resolve()
     seed = get_config("INIT", "seed")
@@ -114,7 +130,6 @@ def main():
     rs = len(results)
     results = [x for x in results if not math.isnan(x[1])]
     print(f"Removed {rs - len(results)} that have nan")
-
 
     results.sort(key=lambda x: x[1], reverse=True)
 
